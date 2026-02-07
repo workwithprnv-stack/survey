@@ -139,7 +139,7 @@ function render() {
     }
 
     if (current >= questions.length) {
-        document.getElementById("question").innerText = "✅ Thank you for completing the survey!";
+        document.getElementById("question").innerText = " Thank you for completing the survey!";
         
         const answersDiv = document.getElementById("answers");
         answersDiv.innerHTML = `
