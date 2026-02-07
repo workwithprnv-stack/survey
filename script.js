@@ -116,56 +116,21 @@ const questions = [
 ];
 
 let current = 0;
-let sessionId = localStorage.getItem("surveySessionId");
+let sessionId = crypto.randomUUID(); // Generate new session ID for each page load (not resumed from localStorage)
 let responses = {};
 let skipNext = false;
 let surveyStarted = false;
 
-if (!sessionId) {
-    sessionId = crypto.randomUUID();
-    localStorage.setItem("surveySessionId", sessionId);
-}
-
+// Don't store sessionId in localStorage - each page load is a fresh session
 document.getElementById("sessionId").innerText = sessionId.slice(0, 6);
-
-const stored = localStorage.getItem(`survey_${sessionId}`);
-if (stored) {
-    responses = JSON.parse(stored).responses;
-}
 
 function startSurvey() {
     surveyStarted = true;
-
-    // Resume Logic: Find the first unanswered mandatory question
-    // If no responses yet, start at 0. Otherwise, continue.
-    if (Object.keys(responses).length > 0) {
-        let lastAnsweredIndex = -1;
-        questions.forEach((q, idx) => {
-            if (responses[q.id]) lastAnsweredIndex = idx;
-        });
-        current = lastAnsweredIndex + 1;
-    } else {
-        current = 0;
-    }
+    current = 0; // Always start fresh, no resume
 
     document.getElementById("landingScreen").style.display = "none";
     document.getElementById("surveyScreen").style.display = "block";
     render();
-    // If survey just completed, submit to server
-    if (current >= questions.length) {
-        // send final payload to server (server will update all_responses.json)
-        if (window.fetch) {
-            const base = window.SURVEY_SERVER_BASE || '';
-            const submitUrl = base ? (base.replace(/\/$/, '') + '/submit') : '/submit';
-            fetch(submitUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            }).then(res => res.json())
-              .then(j => console.log('Server response:', j))
-              .catch(err => console.warn('Failed to submit to server:', err.message));
-        }
-    }
 }
 
 function render() {
@@ -248,6 +213,27 @@ function saveAnswer(id, value) {
     }
 
     render();
+
+    // If survey just completed, submit to server
+    if (current >= questions.length) {
+        const finalData = {
+            sessionId,
+            timestamp: new Date().toISOString(),
+            responses
+        };
+        // send final payload to server (server will update all_responses.json)
+        if (window.fetch) {
+            const base = window.SURVEY_SERVER_BASE || '';
+            const submitUrl = base ? (base.replace(/\/$/, '') + '/submit') : '/submit';
+            fetch(submitUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalData)
+            }).then(res => res.json())
+              .then(j => console.log('✅ Survey submitted to server:', j))
+              .catch(err => console.warn('⚠️ Failed to submit to server:', err.message));
+        }
+    }
 }
 
 // Export survey data as JSON file
@@ -268,12 +254,4 @@ function exportSurveyData() {
     URL.revokeObjectURL(url);
     
     console.log('✅ Survey data exported');
-}
-
-// Auto-render if we are already in a session to avoid getting stuck on landing
-if (Object.keys(responses).length > 0) {
-    surveyStarted = true;
-    document.getElementById("landingScreen").style.display = "none";
-    document.getElementById("surveyScreen").style.display = "block";
-    render();
 }
