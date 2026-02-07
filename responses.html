@@ -194,11 +194,11 @@
         <div class="header">
             <div>
                 <h1>📊 Survey Responses</h1>
-                <p style="color: #666; margin-top: 5px;">All responses are stored locally in your browser</p>
+                <p style="color: #666; margin-top: 5px;">Responses submitted by students are recorded centrally on the course server and stored securely. This page is a local viewer; aggregated data and master records are accessible only to authorized instructors.</p>
             </div>
             <div class="buttons">
-                <button onclick="exportAllResponses()">📥 Download All Responses</button>
-                <button class="secondary" onclick="clearAllResponses()">🗑️ Clear All</button>
+                <button onclick="adminOnly()">📥 Download All Responses</button>
+                <button class="secondary" onclick="adminOnly()">🗑️ Clear All</button>
             </div>
         </div>
 
@@ -294,6 +294,10 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        function adminOnly() {
+            alert('Admin only: aggregated data and deletion are restricted. Contact your instructor to request exports.');
         }
 
         function exportAllResponses() {
