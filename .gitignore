@@ -1,5 +1,10 @@
 node_modules/
+responses_data.json
+*.db
+*.db-journal
 all_responses.json
 sessions/
 .DS_Store
 npm-debug.log
+
+

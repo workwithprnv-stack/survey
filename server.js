@@ -3,117 +3,132 @@ const path = require('path');
 const http = require('http');
 
 const PORT = process.env.PORT || 3000;
-const SESSIONS_DIR = path.join(__dirname, 'sessions');
-const MASTER_RESPONSES_FILE = path.join(__dirname, 'all_responses.json');
+const RESPONSES_FILE = path.join(__dirname, 'responses_data.json');
 
-// Ensure sessions directory exists
-if (!fs.existsSync(SESSIONS_DIR)) {
-    fs.mkdirSync(SESSIONS_DIR);
+// Initialize responses file if it doesn't exist
+if (!fs.existsSync(RESPONSES_FILE)) {
+    fs.writeFileSync(RESPONSES_FILE, JSON.stringify({ responses: [], lastUpdated: new Date().toISOString() }, null, 2));
 }
 
-// Initialize master responses file if it doesn't exist
-if (!fs.existsSync(MASTER_RESPONSES_FILE)) {
-    fs.writeFileSync(MASTER_RESPONSES_FILE, JSON.stringify({ responses: [], lastUpdated: new Date().toISOString() }, null, 2));
-}
-
-function readJSONSafe(p) {
+function readResponses() {
     try {
-        return JSON.parse(fs.readFileSync(p, 'utf-8'));
+        return JSON.parse(fs.readFileSync(RESPONSES_FILE, 'utf-8'));
     } catch (e) {
         return { responses: [], lastUpdated: null };
     }
 }
 
-function updateMasterResponses(data) {
-    const masterData = readJSONSafe(MASTER_RESPONSES_FILE);
-    const existingIndex = masterData.responses.findIndex(r => r.sessionId === data.sessionId);
-    if (existingIndex !== -1) {
-        masterData.responses[existingIndex] = data;
-    } else {
-        masterData.responses.push(data);
+function saveResponse(data) {
+    try {
+        const current = readResponses();
+        const existingIndex = current.responses.findIndex(r => r.sessionId === data.sessionId);
+        if (existingIndex !== -1) {
+            current.responses[existingIndex] = data;
+        } else {
+            current.responses.push(data);
+        }
+        current.lastUpdated = new Date().toISOString();
+        fs.writeFileSync(RESPONSES_FILE, JSON.stringify(current, null, 2));
+        return true;
+    } catch (err) {
+        console.error('Error saving response:', err.message);
+        return false;
     }
-    masterData.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(MASTER_RESPONSES_FILE, JSON.stringify(masterData, null, 2));
 }
 
 function isNeutralOnly(responses) {
-    // Consider values that are exactly 'Neutral' (case-insensitive) as neutral
-    const vals = Object.values(responses || {});
-    if (vals.length === 0) return false;
-    return vals.every(v => typeof v === 'string' && v.trim().toLowerCase() === 'neutral');
+    const values = Object.values(responses || {});
+    if (values.length === 0) return false;
+    return values.every(v => {
+        const str = String(v).toLowerCase().trim();
+        return str === 'neutral' || str === 'none' || str === '';
+    });
 }
 
 const server = http.createServer((req, res) => {
-    // POST /submit - receive completed survey and store it server-side
-    if (req.url === '/submit') {
-        // handle CORS preflight
-        if (req.method === 'OPTIONS') {
-            res.writeHead(204, {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            });
-            res.end();
-            return;
-        }
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-        if (req.method === 'POST') {
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    // Handle form submission
+    if (req.method === 'POST' && req.url === '/submit') {
         let body = '';
-        req.on('data', chunk => body += chunk.toString());
+
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+
         req.on('end', () => {
             try {
                 const data = JSON.parse(body);
-                if (!data.sessionId || !data.timestamp || !data.responses) {
-                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'Invalid payload' }));
+                const { sessionId, timestamp, responses } = data;
+
+                if (!sessionId || !timestamp || !responses) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Missing required fields' }));
                     return;
                 }
 
-                // Reject responses that are neutral for every answer (quality control)
-                if (isNeutralOnly(data.responses)) {
-                    res.writeHead(422, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ error: 'Insufficient quality (neutral-only)' }));
+                // Validate: reject all-neutral responses
+                if (isNeutralOnly(responses)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        error: 'Please answer with more than just "Neutral" responses'
+                    }));
+                    console.log(`⚠️  Rejected neutral-only response from: ${sessionId.slice(0, 6)}...`);
                     return;
                 }
 
-                // Save individual session file
-                const sessionPath = path.join(SESSIONS_DIR, `${data.sessionId}.json`);
-                fs.writeFileSync(sessionPath, JSON.stringify(data, null, 2));
+                // Save response
+                const success = saveResponse(data);
 
-                // Update master responses file
-                updateMasterResponses(data);
-
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify({ ok: true }));
-                console.log(`✅ Saved response ${data.sessionId.slice(0,6)}  Total: ${readJSONSafe(MASTER_RESPONSES_FILE).responses.length}`);
+                if (success) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: true,
+                        sessionId,
+                        message: 'Response saved successfully'
+                    }));
+                    const count = readResponses().responses.length;
+                    console.log(`✅ Saved response from session: ${sessionId.slice(0, 6)}... (Total: ${count})`);
+                } else {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Failed to save response' }));
+                }
             } catch (err) {
-                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+                res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Server error' }));
-                console.error('Server error handling /submit:', err.message);
+                console.error('Error processing submission:', err.message);
             }
         });
         return;
-        }
     }
 
-    // Do not expose master responses or sessions folder
-    if (req.url === '/all_responses.json' || req.url.startsWith('/sessions')) {
+    // API endpoint: get all responses
+    if (req.method === 'GET' && req.url === '/api/responses') {
+        const data = readResponses();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(data));
+        return;
+    }
+
+    // Block direct access to data file
+    if (req.url === '/responses_data.json') {
         res.writeHead(404);
         res.end('Not found');
         return;
     }
 
-    // Serve responses via API endpoint
-    if (req.url === '/api/responses') {
-        const masterData = readJSONSafe(MASTER_RESPONSES_FILE);
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify(masterData));
-        return;
-    }
-
-    // Serve static files from this directory
+    // Serve static files
     let file = req.url === '/' ? '/index.html' : req.url;
-    // sanitize
     file = decodeURIComponent(file.split('?')[0]);
     const filePath = path.join(__dirname, file);
 
@@ -130,14 +145,33 @@ const server = http.createServer((req, res) => {
             res.end('Not found');
             return;
         }
+
+        // Determine content type
         const ext = path.extname(filePath);
         let contentType = 'text/html';
-        if (ext === '.js') contentType = 'application/javascript';
         if (ext === '.css') contentType = 'text/css';
+        if (ext === '.js') contentType = 'application/javascript';
         if (ext === '.json') contentType = 'application/json';
+
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
     });
 });
 
-server.listen(PORT, () => console.log(`🌐 Server running on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════╗
+║       Survey Backend Server (JSON)         ║
+╠════════════════════════════════════════════╣
+║ 🚀 Server running on http://localhost:${PORT}  ║
+║ 📊 Data file: responses_data.json          ║
+║ 🌐 API: http://localhost:${PORT}/api/responses │
+║ 📝 Submit: POST http://localhost:${PORT}/submit ║
+╚════════════════════════════════════════════╝
+    `);
+});
+
+process.on('SIGINT', () => {
+    console.log('\n📴 Shutting down gracefully...');
+    process.exit(0);
+});
