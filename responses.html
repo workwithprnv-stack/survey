@@ -220,6 +220,9 @@
     </div>
 
     <script>
+        // Get server base URL
+        const SERVER_BASE = window.SURVEY_SERVER_BASE || (window.location.origin === window.location.protocol + '//' + window.location.host ? '' : window.location.origin);
+        
         // Question map for display
         const questionMap = {
             "q1": "What best describes you?",
@@ -236,18 +239,17 @@
         };
 
         function getAllResponses() {
-            const responses = [];
-            for (let key in localStorage) {
-                if (key.startsWith('survey_')) {
-                    try {
-                        const data = JSON.parse(localStorage[key]);
-                        responses.push(data);
-                    } catch (e) {
-                        console.error('Error parsing response:', e);
-                    }
-                }
-            }
-            return responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            return fetch(SERVER_BASE ? SERVER_BASE.replace(/\/$/, '') + '/api/responses' : '/api/responses')
+                .then(res => res.json())
+                .then(data => {
+                    const responses = (data.responses || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    return responses;
+                })
+                .catch(err => {
+                    console.error('Failed to fetch responses:', err);
+                    return [];
+                });
+
         }
 
         function formatDate(timestamp) {
@@ -256,26 +258,26 @@
         }
 
         function displayResponses() {
-            const responses = getAllResponses();
-            const container = document.getElementById('responsesContainer');
+            getAllResponses().then(responses => {
+                const container = document.getElementById('responsesContainer');
 
-            // Update stats
-            document.getElementById('totalCount').textContent = responses.length;
-            if (responses.length > 0) {
-                document.getElementById('lastTime').textContent = formatDate(responses[0].timestamp);
-            }
+                // Update stats
+                document.getElementById('totalCount').textContent = responses.length;
+                if (responses.length > 0) {
+                    document.getElementById('lastTime').textContent = formatDate(responses[0].timestamp);
+                }
 
-            if (responses.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <p>📭 No responses yet</p>
-                        <p>Complete a survey to see responses here</p>
-                    </div>
-                `;
-                return;
-            }
+                if (responses.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <p>📭 No responses yet</p>
+                            <p>Complete a survey to see responses here</p>
+                        </div>
+                    `;
+                    return;
+                }
 
-            container.innerHTML = responses.map((response, idx) => `
+                container.innerHTML = responses.map((response, idx) => `
                 <div class="response-card">
                     <div class="response-header">
                         <div class="response-id">Response #${responses.length - idx}</div>
@@ -294,6 +296,7 @@
                     </div>
                 </div>
             `).join('');
+            });
         }
 
         function adminOnly() {
@@ -301,29 +304,30 @@
         }
 
         function exportAllResponses() {
-            const responses = getAllResponses();
-            if (responses.length === 0) {
-                alert('No responses to export!');
-                return;
-            }
+            getAllResponses().then(responses => {
+                if (responses.length === 0) {
+                    alert('No responses to export!');
+                    return;
+                }
 
-            const exportData = {
-                surveyName: "FLAME IT Survey",
-                exportDate: new Date().toISOString(),
-                totalResponses: responses.length,
-                responses: responses
-            };
+                const exportData = {
+                    surveyName: "FLAME IT Survey",
+                    exportDate: new Date().toISOString(),
+                    totalResponses: responses.length,
+                    responses: responses
+                };
 
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `survey_responses_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            URL.revokeObjectURL(url);
+                const dataStr = JSON.stringify(exportData, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `survey_responses_${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
 
-            console.log(`✅ Exported ${responses.length} responses`);
+                console.log(`✅ Exported ${responses.length} responses`);
+            });
         }
 
         function clearAllResponses() {

@@ -103,6 +103,14 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Serve responses via API endpoint
+    if (req.url === '/api/responses') {
+        const masterData = readJSONSafe(MASTER_RESPONSES_FILE);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(masterData));
+        return;
+    }
+
     // Serve static files from this directory
     let file = req.url === '/' ? '/index.html' : req.url;
     // sanitize
