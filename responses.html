@@ -205,8 +205,8 @@
                 <p style="color: #666; margin-top: 5px;">Responses submitted by students are recorded centrally on the course server and stored securely. This page is a local viewer; aggregated data and master records are accessible only to authorized instructors.</p>
             </div>
             <div class="buttons">
-                <button onclick="adminOnly()">📥 Download All Responses</button>
-                <button class="secondary" onclick="adminOnly()">🗑️ Clear All</button>
+                <button onclick="exportAllResponses()">📥 Download All Responses</button>
+                <button class="secondary" onclick="clearAllResponses()">🗑️ Clear All</button>
             </div>
         </div>
 
@@ -247,6 +247,27 @@
         };
 
         function getAllResponses() {
+            // First try localStorage (GitHub Pages mode)
+            const localResponses = [];
+            for (let key in localStorage) {
+                if (key.startsWith('survey_')) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        if (data.responses && Object.keys(data.responses).length > 0) {
+                            localResponses.push(data);
+                        }
+                    } catch (e) {
+                        console.warn('Invalid data in localStorage:', key);
+                    }
+                }
+            }
+
+            // If we have local responses, return them
+            if (localResponses.length > 0) {
+                return Promise.resolve(localResponses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+            }
+
+            // Otherwise try server API
             return fetch(SERVER_BASE ? SERVER_BASE.replace(/\/$/, '') + '/api/responses' : '/api/responses')
                 .then(res => res.json())
                 .then(data => {
@@ -254,10 +275,9 @@
                     return responses;
                 })
                 .catch(err => {
-                    console.error('Failed to fetch responses:', err);
+                    console.error('Failed to fetch responses from server:', err);
                     return [];
                 });
-
         }
 
         function formatDate(timestamp) {
