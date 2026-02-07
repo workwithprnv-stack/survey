@@ -45,21 +45,33 @@ function isNeutralOnly(responses) {
 
 const server = http.createServer((req, res) => {
     // POST /submit - receive completed survey and store it server-side
-    if (req.method === 'POST' && req.url === '/submit') {
+    if (req.url === '/submit') {
+        // handle CORS preflight
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+
+        if (req.method === 'POST') {
         let body = '';
         req.on('data', chunk => body += chunk.toString());
         req.on('end', () => {
             try {
                 const data = JSON.parse(body);
                 if (!data.sessionId || !data.timestamp || !data.responses) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                     res.end(JSON.stringify({ error: 'Invalid payload' }));
                     return;
                 }
 
                 // Reject responses that are neutral for every answer (quality control)
                 if (isNeutralOnly(data.responses)) {
-                    res.writeHead(422, { 'Content-Type': 'application/json' });
+                    res.writeHead(422, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                     res.end(JSON.stringify({ error: 'Insufficient quality (neutral-only)' }));
                     return;
                 }
@@ -71,16 +83,17 @@ const server = http.createServer((req, res) => {
                 // Update master responses file
                 updateMasterResponses(data);
 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ ok: true }));
                 console.log(`✅ Saved response ${data.sessionId.slice(0,6)}  Total: ${readJSONSafe(MASTER_RESPONSES_FILE).responses.length}`);
             } catch (err) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ error: 'Server error' }));
                 console.error('Server error handling /submit:', err.message);
             }
         });
         return;
+        }
     }
 
     // Do not expose master responses or sessions folder

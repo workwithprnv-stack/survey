@@ -155,7 +155,9 @@ function startSurvey() {
     if (current >= questions.length) {
         // send final payload to server (server will update all_responses.json)
         if (window.fetch) {
-            fetch('/submit', {
+            const base = window.SURVEY_SERVER_BASE || '';
+            const submitUrl = base ? (base.replace(/\/$/, '') + '/submit') : '/submit';
+            fetch(submitUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
