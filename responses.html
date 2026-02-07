@@ -189,10 +189,8 @@
     
     <!-- Configure backend server URL for responses -->
     <script>
-      // TODO: Replace with your Railway backend URL after deployment
-      // Example: window.SURVEY_SERVER_BASE = 'https://desg318-surveydesign-production.up.railway.app';
-      // Leave blank to use relative path (only works if backend is on same domain)
-      window.SURVEY_SERVER_BASE = '';
+      // Local development server
+      window.SURVEY_SERVER_BASE = 'http://localhost:3000';
     </script>
 </head>
 <body>
@@ -247,36 +245,33 @@
         };
 
         function getAllResponses() {
-            // First try localStorage (GitHub Pages mode)
-            const localResponses = [];
-            for (let key in localStorage) {
-                if (key.startsWith('survey_')) {
-                    try {
-                        const data = JSON.parse(localStorage.getItem(key));
-                        if (data.responses && Object.keys(data.responses).length > 0) {
-                            localResponses.push(data);
-                        }
-                    } catch (e) {
-                        console.warn('Invalid data in localStorage:', key);
-                    }
-                }
-            }
-
-            // If we have local responses, return them
-            if (localResponses.length > 0) {
-                return Promise.resolve(localResponses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-            }
-
-            // Otherwise try server API
+            // First try server API for universal responses
             return fetch(SERVER_BASE ? SERVER_BASE.replace(/\/$/, '') + '/api/responses' : '/api/responses')
                 .then(res => res.json())
                 .then(data => {
                     const responses = (data.responses || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    console.log(`✅ Loaded ${responses.length} responses from server`);
                     return responses;
                 })
                 .catch(err => {
-                    console.error('Failed to fetch responses from server:', err);
-                    return [];
+                    console.warn('Failed to fetch from server, falling back to localStorage:', err);
+                    
+                    // Fallback to localStorage (GitHub Pages mode)
+                    const localResponses = [];
+                    for (let key in localStorage) {
+                        if (key.startsWith('survey_')) {
+                            try {
+                                const data = JSON.parse(localStorage.getItem(key));
+                                if (data.responses && Object.keys(data.responses).length > 0) {
+                                    localResponses.push(data);
+                                }
+                            } catch (e) {
+                                console.warn('Invalid data in localStorage:', key);
+                            }
+                        }
+                    }
+
+                    return localResponses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 });
         }
 
