@@ -1,0 +1,5 @@
+node_modules/
+all_responses.json
+sessions/
+.DS_Store
+npm-debug.log

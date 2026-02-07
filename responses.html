@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Survey Responses</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stats {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .stats-item {
+            margin: 5px 0;
+        }
+
+        .stats-value {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        button.secondary {
+            background: #999;
+        }
+
+        button.secondary:hover {
+            background: #777;
+        }
+
+        .responses-container {
+            margin-top: 30px;
+        }
+
+        .response-card {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: box-shadow 0.3s;
+        }
+
+        .response-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .response-id {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .response-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .response-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .answer {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+
+        .answer-question {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .answer-value {
+            font-size: 14px;
+            color: #333;
+            margin-top: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Survey</a>
+
+        <div class="header">
+            <div>
+                <h1>📊 Survey Responses</h1>
+                <p style="color: #666; margin-top: 5px;">All responses are stored locally in your browser</p>
+            </div>
+            <div class="buttons">
+                <button onclick="exportAllResponses()">📥 Download All Responses</button>
+                <button class="secondary" onclick="clearAllResponses()">🗑️ Clear All</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stats-item">
+                Total Responses: <span class="stats-value" id="totalCount">0</span>
+            </div>
+            <div class="stats-item">
+                Last Response: <span class="stats-value" id="lastTime">Never</span>
+            </div>
+        </div>
+
+        <div class="responses-container" id="responsesContainer">
+            <div class="empty-state">
+                <p>📭 No responses yet</p>
+                <p>Complete a survey to see responses here</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Question map for display
+        const questionMap = {
+            "q1": "What best describes you?",
+            "q2": "How often do you use Moodle in a typical week?",
+            "q3": "Which option best describes your internet usage on campus?",
+            "q4": "How would you rate the speed and reliability of campus Wi-Fi?",
+            "q5": "Moodle works reliably for critical academic tasks.",
+            "q6": "How easy is it to navigate and use Moodle?",
+            "q7": "How easy was it to get your issue resolved through IT support?",
+            "q8": "How helpful was the FLAME IT team?",
+            "q9": "Campus IT systems work reliably during exams and deadlines.",
+            "q10": "Overall, how satisfied are you with FLAME's IT services?",
+            "q11": "How likely are you to recommend FLAME IT services to another student?"
+        };
+
+        function getAllResponses() {
+            const responses = [];
+            for (let key in localStorage) {
+                if (key.startsWith('survey_')) {
+                    try {
+                        const data = JSON.parse(localStorage[key]);
+                        responses.push(data);
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                    }
+                }
+            }
+            return responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function displayResponses() {
+            const responses = getAllResponses();
+            const container = document.getElementById('responsesContainer');
+
+            // Update stats
+            document.getElementById('totalCount').textContent = responses.length;
+            if (responses.length > 0) {
+                document.getElementById('lastTime').textContent = formatDate(responses[0].timestamp);
+            }
+
+            if (responses.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>📭 No responses yet</p>
+                        <p>Complete a survey to see responses here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = responses.map((response, idx) => `
+                <div class="response-card">
+                    <div class="response-header">
+                        <div class="response-id">Response #${responses.length - idx}</div>
+                        <div>
+                            <div class="response-time">${formatDate(response.timestamp)}</div>
+                            <div style="font-size: 11px; color: #ccc; margin-top: 3px;">ID: ${response.sessionId.slice(0, 8)}</div>
+                        </div>
+                    </div>
+                    <div class="response-body">
+                        ${Object.entries(response.responses).map(([qid, answer]) => `
+                            <div class="answer">
+                                <div class="answer-question">${questionMap[qid] || qid}</div>
+                                <div class="answer-value">${answer}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function exportAllResponses() {
+            const responses = getAllResponses();
+            if (responses.length === 0) {
+                alert('No responses to export!');
+                return;
+            }
+
+            const exportData = {
+                surveyName: "FLAME IT Survey",
+                exportDate: new Date().toISOString(),
+                totalResponses: responses.length,
+                responses: responses
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `survey_responses_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            console.log(`✅ Exported ${responses.length} responses`);
+        }
+
+        function clearAllResponses() {
+            if (confirm('Are you sure you want to delete all responses?\n\nThis action cannot be undone!')) {
+                for (let key in localStorage) {
+                    if (key.startsWith('survey_')) {
+                        localStorage.removeItem(key);
+                    }
+                }
+                displayResponses();
+                alert('✅ All responses cleared');
+            }
+        }
+
+        // Load responses on page load
+        displayResponses();
+
+        // Refresh every 5 seconds
+        setInterval(displayResponses, 5000);
+    </script>
+</body>
+</html>

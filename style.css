@@ -1,0 +1,335 @@
+:root {
+  --font-pixel: 'VT323', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --bg-color: #0b000d;
+  --fg-color: #ffffff;
+  --accent-magenta: #ff00ff;
+  --accent-cyan: #00ffff;
+  --border-color: #bd91b6;
+  --card-bg: rgba(25, 10, 30, 0.8);
+
+  --pixel-size: 4px;
+}
+
+.progress-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 10000;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-magenta), var(--accent-cyan));
+  box-shadow: 0 0 10px var(--accent-magenta);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-color);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--fg-color);
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Scanline effect */
+body::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  z-index: 9999;
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  position: relative;
+  z-index: 10;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 40px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info p {
+  font-family: var(--font-pixel);
+  font-size: 36px;
+  background: linear-gradient(90deg, var(--accent-magenta), var(--accent-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  filter: drop-shadow(0 0 5px rgba(255, 0, 255, 0.3));
+}
+
+.id {
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  color: var(--fg-color);
+  opacity: 0.7;
+}
+
+.id::before {
+  content: "[SESS_ID: ";
+}
+
+.id::after {
+  content: "]";
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  padding: 40px;
+  position: relative;
+  box-shadow: 10px 10px 0px rgba(189, 145, 182, 0.2);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid var(--accent-magenta);
+  border-left: 2px solid var(--accent-magenta);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid var(--accent-cyan);
+  border-right: 2px solid var(--accent-cyan);
+}
+
+h2,
+h3 {
+  font-family: var(--font-pixel);
+  font-size: 56px;
+  line-height: 0.85;
+  margin-bottom: 24px;
+  color: var(--fg-color);
+  text-transform: uppercase;
+  letter-spacing: -2px;
+}
+
+h2 {
+  color: var(--accent-magenta);
+  text-shadow: 4px 4px 0px rgba(0, 255, 255, 0.3);
+}
+
+p.tease {
+  font-size: 18px;
+  color: var(--border-color);
+  margin-bottom: 20px;
+}
+
+ul {
+  list-style: none;
+  margin: 20px 0;
+}
+
+li {
+  padding-left: 24px;
+  position: relative;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: #ccc;
+}
+
+li::before {
+  content: "»";
+  position: absolute;
+  left: 0;
+  color: var(--accent-magenta);
+}
+
+.highlight {
+  color: var(--accent-cyan);
+  font-weight: bold;
+  background: rgba(0, 255, 255, 0.1);
+  padding: 0 4px;
+}
+
+.tease {
+  border-left: var(--pixel-size) solid var(--accent-cyan);
+  padding-left: 12px;
+}
+
+.step-nav {
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  color: var(--accent-magenta);
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* Options/Buttons */
+button.option {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--fg-color);
+  padding: 16px 24px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button.option:hover {
+  background: var(--accent-magenta);
+  color: #000;
+  border-color: var(--accent-magenta);
+  transform: translateX(8px);
+  font-weight: bold;
+}
+
+button.option::after {
+  content: "→";
+  position: absolute;
+  right: 24px;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+button.option:hover::after {
+  opacity: 1;
+  right: 16px;
+}
+
+/* Scale styling */
+.scale {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+  gap: 8px;
+  margin-top: 32px;
+}
+
+button.scale-option {
+  aspect-ratio: 1/1;
+  background: rgba(189, 145, 182, 0.1);
+  border: 1px solid var(--border-color);
+  color: var(--fg-color);
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+button.scale-option:hover {
+  background: var(--accent-magenta);
+  color: #000;
+  border-color: #fff;
+  transform: scale(1.1) rotate(2deg);
+  z-index: 2;
+  box-shadow: 0 0 20px var(--accent-magenta);
+}
+
+/* Landing specific */
+.landing-screen {
+  text-align: left;
+}
+
+.landing-screen button.option {
+  background: var(--accent-magenta);
+  color: #000;
+  font-weight: bold;
+  font-size: 20px;
+  text-align: center;
+  margin-top: 32px;
+  border: none;
+}
+
+.landing-screen button.option:hover {
+  background: #fff;
+  transform: translateY(-4px);
+  box-shadow: 0 4px 0 var(--accent-magenta);
+}
+
+/* Progress indicator placeholder styling */
+#stepCounter {
+  letter-spacing: 1px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+
+  h2,
+  h3 {
+    font-size: 32px;
+  }
+
+  .card {
+    padding: 24px;
+  }
+}
+
+/* Animations */
+@keyframes flicker {
+  0% {
+    opacity: 0.99;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.99;
+  }
+}
+
+main {
+  animation: flicker 8s infinite ease-in-out;
+}

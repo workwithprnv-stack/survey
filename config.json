@@ -1,0 +1,12 @@
+{
+  "surveyName": "FLAME IT Survey",
+  "surveyDescription": "Help us improve your IT experience by sharing your feedback.",
+  "estimatedTime": "5-7 minutes",
+  "enableLocalStorage": true,
+  "dataStorage": "browser localStorage only",
+  "theme": {
+    "primaryColor": "#667eea",
+    "accentColor": "#764ba2"
+  },
+  "notes": "This survey is completely client-side. All responses are stored in browser localStorage. No server required. Works on GitHub Pages, Netlify, Vercel, or any static host."
+}
